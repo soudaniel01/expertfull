@@ -7,7 +7,7 @@ CSymbolInfo symbol;
 CPositionInfo position;
 
 input double InpLots = 0.1;                   // Lote inicial
-input int    InpMagicNumberBase = 12345;      // Numero magico
+input int    InpMagicNumberBase = 12345;      // Numero magico base
 input int    InpMaxSpread = 30;               // Spread maximo em pontos
 input double InpRiskPerTrade = 1.0;           // Risco (%) por operacao
 input double InpMaxDailyLoss = 5.0;           // Perda diaria maxima (%)
@@ -59,10 +59,20 @@ input bool InpEnableNewsFilter = false;
 // Variaveis globais
 double max_equity = 0.0;
 datetime today_start = 0;
+int g_magic = 0;                        // magic number por simbolo/timeframe
 
 //--- Funcao auxiliar para saber se candle e bullish/bearish
 bool Bullish(int shift){ return Close[shift] > Open[shift]; }
 bool Bearish(int shift){ return Close[shift] < Open[shift]; }
+
+//--- calcula magic number unico por simbolo e timeframe
+int GetMagicNumber()
+{
+   uint hash=0;
+   for(int i=0;i<StringLen(_Symbol);i++)
+      hash = hash*33 + StringGetChar(_Symbol,i);
+   return InpMagicNumberBase + (int)_Period*100 + (int)(hash%100);
+}
 
 bool CheckHammer(int shift)
 {
@@ -191,6 +201,24 @@ bool RiskLimitsOK()
    return true;
 }
 
+//--- verifica regime de mercado utilizando ADX
+bool MarketRegimeOK()
+{
+   if(!InpEnableMarketRegimeDetector)
+      return true;
+   double adx = iADX(_Symbol, _Period, InpADXPeriod, PRICE_CLOSE, MODE_MAIN, 0);
+   return (adx >= 25.0);
+}
+
+//--- filtro de noticias (placeholder)
+bool CheckNewsFilter()
+{
+   if(!InpEnableNewsFilter)
+      return true;
+   // Implementar leitura de calendario economico conforme necessario
+   return true;
+}
+
 //--- calcula lote baseado no risco
 double CalculateLot()
 {
@@ -213,7 +241,7 @@ bool OpenPosition(bool buy)
    double sl = buy ? price - InpStopLossPips*_Point : price + InpStopLossPips*_Point;
    double tp = buy ? price + InpTakeProfitPips*_Point : price - InpTakeProfitPips*_Point;
    double lot = CalculateLot();
-   trade.SetExpertMagicNumber(InpMagicNumberBase);
+   trade.SetExpertMagicNumber(g_magic);
    trade.SetSlippage(InpSlippage);
    bool res = buy ? trade.Buy(lot,_Symbol,price,sl,tp,"ManusAI") :
                     trade.Sell(lot,_Symbol,price,sl,tp,"ManusAI");
@@ -232,7 +260,7 @@ void ManagePositions()
    {
       if(position.SelectByIndex(i))
       {
-         if(position.Magic()==InpMagicNumberBase && position.Symbol()==_Symbol)
+         if(position.Magic()==g_magic && position.Symbol()==_Symbol)
          {
             if(InpEnableTrailingStop)
             {
@@ -280,13 +308,16 @@ int OnInit()
    symbol.Name(_Symbol);
    today_start = StringToTime(TimeToString(TimeCurrent(),TIME_DATE));
    max_equity = AccountEquity();
+   g_magic = GetMagicNumber();
    return(INIT_SUCCEEDED);
 }
 
 void OnTick()
 {
    if(!CheckTradingSession()) return;
-   if(symbol.Spread() > InpMaxSpread*_Point) return;
+   if(symbol.Spread() > InpMaxSpread) return;
+   if(!MarketRegimeOK()) return;
+   if(!CheckNewsFilter()) return;
    if(!RiskLimitsOK()) return;
 
    ManagePositions();

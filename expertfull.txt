@@ -1,0 +1,11 @@
+Expert Advisor ManusAI - Features
+================================
+
+Prioridades implementadas:
+- Filtro de spread e janela de negociacao configuravel.
+- Stop global de perda diaria e controle de drawdown.
+- Magic number exclusivo por ativo e timeframe.
+- Detector opcional de regime de mercado (ADX) e placeholder para filtro de noticias.
+- Script auxiliar ``montecarlo_backtest.py`` para realizar Monte Carlo com resultados de back-test.
+
+Metas de performance recomendadas: Profit Factor >= 1.8, Sharpe >= 1.0 e Drawdown <= 15%.
