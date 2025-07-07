@@ -286,22 +286,26 @@ double CalculateLot()
 //--- abre posicao
 bool OpenPosition(bool buy)
 {
-   double price = buy ? SymbolInfoDouble(_Symbol,SYMBOL_ASK) : SymbolInfoDouble(_Symbol,SYMBOL_BID);
+   // INVERT-SIGNAL: troca Buy↔Sell e SL↔TP
+   bool orderBuy = !buy;
 
    int    stopLevelPoints = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
-   int    freezePts = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
-   double point     = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   int    freezePts       = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+   double point           = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
 
    double stopLevel = stopLevelPoints * point;
    double minDist   = MathMax(stopLevel, freezePts * point);
 
-   double sl = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - InpStopLossPips * point, _Digits)
-                    : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) + InpStopLossPips * point, _Digits);
-   double tp = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) + InpTakeProfitPips * point, _Digits)
-                    : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) - InpTakeProfitPips * point, _Digits);
+   double sl_orig = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - InpStopLossPips * point, _Digits)
+                        : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) + InpStopLossPips * point, _Digits);
+   double tp_orig = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) + InpTakeProfitPips * point, _Digits)
+                        : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) - InpTakeProfitPips * point, _Digits);
+
+   double sl = tp_orig;
+   double tp = sl_orig;
 
    // FIX: Invalid stops
-   if(buy)
+   if(orderBuy)
    {
       if ((SymbolInfoDouble(_Symbol, SYMBOL_BID) - sl) < minDist)
          sl = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - minDist, _Digits);
@@ -320,11 +324,14 @@ bool OpenPosition(bool buy)
    g_trade.SetExpertMagicNumber(g_magic);
    g_trade.SetDeviationInPoints(InpSlippage);
 
-   bool res = buy ? g_trade.Buy(lot,_Symbol,price,sl,tp,"ManusAI") :
-                    g_trade.Sell(lot,_Symbol,price,sl,tp,"ManusAI");
+   double price = orderBuy ? SymbolInfoDouble(_Symbol,SYMBOL_ASK)
+                           : SymbolInfoDouble(_Symbol,SYMBOL_BID);
+
+   bool res = orderBuy ? g_trade.Buy(lot,_Symbol,price,sl,tp,"ManusAI") :
+                        g_trade.Sell(lot,_Symbol,price,sl,tp,"ManusAI");
    if(res)
    {
-      if(InpEnableAlerts) Alert("ManusAI ordem aberta: ", buy?"BUY":"SELL");
+      if(InpEnableAlerts) Alert("ManusAI ordem aberta: ", orderBuy?"BUY":"SELL");
       if(InpEnableEmailAlerts) SendMail("ManusAI","Ordem aberta");
       if(InpEnablePushAlerts) SendNotification("ManusAI ordem aberta");
    }
