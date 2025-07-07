@@ -145,17 +145,17 @@ bool CheckEveningStar(int shift)
 //--- indicadores simples
 bool BullIndicators()
 {
-   double fast = iMA(_Symbol,_Period,InpFastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double slow = iMA(_Symbol,_Period,InpSlowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double rsi = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE,0);
+   double fast = iMA(_Symbol,_Period,InpFastEMAPeriod,0,MODE_EMA,PRICE_CLOSE);
+   double slow = iMA(_Symbol,_Period,InpSlowEMAPeriod,0,MODE_EMA,PRICE_CLOSE);
+   double rsi = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE);
    return (fast>slow && rsi>50);
 }
 
 bool BearIndicators()
 {
-   double fast = iMA(_Symbol,_Period,InpFastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double slow = iMA(_Symbol,_Period,InpSlowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double rsi = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE,0);
+   double fast = iMA(_Symbol,_Period,InpFastEMAPeriod,0,MODE_EMA,PRICE_CLOSE);
+   double slow = iMA(_Symbol,_Period,InpSlowEMAPeriod,0,MODE_EMA,PRICE_CLOSE);
+   double rsi = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE);
    return (fast<slow && rsi<50);
 }
 
@@ -195,7 +195,7 @@ bool RiskLimitsOK()
    if(max_equity==0) max_equity = AccountInfoDouble(ACCOUNT_EQUITY);
    if(AccountInfoDouble(ACCOUNT_EQUITY)>max_equity) max_equity = AccountInfoDouble(ACCOUNT_EQUITY);
    double drawdown = (max_equity-AccountInfoDouble(ACCOUNT_EQUITY))/max_equity*100.0;
-   double today_loss = GetTodayLoss()/AccountBalance()*100.0;
+   double today_loss = GetTodayLoss()/AccountInfoDouble(ACCOUNT_BALANCE)*100.0;
    if(drawdown>InpMaxDrawdown || today_loss>InpMaxDailyLoss)
       return false;
    return true;
@@ -206,7 +206,15 @@ bool MarketRegimeOK()
 {
    if(!InpEnableMarketRegimeDetector)
       return true;
-   double adx = iADX(_Symbol, _Period, InpADXPeriod, PRICE_CLOSE, MODE_MAIN, 0);
+   double adx = 0.0;
+   int handle=iADX(_Symbol,_Period,InpADXPeriod);
+   if(handle!=INVALID_HANDLE)
+   {
+      double buf[];
+      if(CopyBuffer(handle,0,0,1,buf)>0)
+         adx=buf[0];
+      IndicatorRelease(handle);
+   }
    return (adx >= 25.0);
 }
 
@@ -224,7 +232,7 @@ double CalculateLot()
 {
    double tick_val = SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_VALUE);
    double lot_step = SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
-   double risk = AccountBalance()*InpRiskPerTrade/100.0;
+   double risk = AccountInfoDouble(ACCOUNT_BALANCE)*InpRiskPerTrade/100.0;
    double sl_value = InpStopLossPips*_Point / SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE) * tick_val;
    double volume = risk/sl_value;
    volume = MathFloor(volume/lot_step)*lot_step;
