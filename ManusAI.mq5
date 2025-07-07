@@ -288,8 +288,7 @@ bool OpenPosition(bool buy)
 {
    double price = buy ? SymbolInfoDouble(_Symbol,SYMBOL_ASK) : SymbolInfoDouble(_Symbol,SYMBOL_BID);
 
-   double stopLevelPoints = 0.0;
-   SymbolInfoDouble(_Symbol, SYMBOL_TRADE_STOPS_LEVEL, stopLevelPoints);
+   int    stopLevelPoints = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
    int    freezePts = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
    double point     = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
 
@@ -342,8 +341,7 @@ void ManagePositions()
          {
             if(InpEnableTrailingStop)
             {
-               double stopLevelPts = 0.0;
-               SymbolInfoDouble(_Symbol, SYMBOL_TRADE_STOPS_LEVEL, stopLevelPts);
+               int    stopLevelPts = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
                int    freezePts = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
                double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
                double minDist = MathMax(stopLevelPts * point, freezePts * point);
