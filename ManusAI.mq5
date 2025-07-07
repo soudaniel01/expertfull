@@ -288,15 +288,34 @@ bool OpenPosition(bool buy)
 {
    double price = buy ? SymbolInfoDouble(_Symbol,SYMBOL_ASK) : SymbolInfoDouble(_Symbol,SYMBOL_BID);
 
-   int    stopsPts  = (int)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL);
-   int    freezePts = (int)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_FREEZE_LEVEL);
-   double minDist   = MathMax(stopsPts,freezePts)*_Point;
+   double stopLevelPoints = 0.0;
+   SymbolInfoDouble(_Symbol, SYMBOL_TRADE_STOPS_LEVEL, stopLevelPoints);
+   int    freezePts = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+   double point     = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
 
-   double sl_dist = MathMax(InpStopLossPips*_Point,minDist);
-   double tp_dist = MathMax(InpTakeProfitPips*_Point,minDist);
+   double stopLevel = stopLevelPoints * point;
+   double minDist   = MathMax(stopLevel, freezePts * point);
 
-   double sl = buy ? price - sl_dist : price + sl_dist;
-   double tp = buy ? price + tp_dist : price - tp_dist;
+   double sl = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - InpStopLossPips * point, _Digits)
+                    : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) + InpStopLossPips * point, _Digits);
+   double tp = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) + InpTakeProfitPips * point, _Digits)
+                    : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) - InpTakeProfitPips * point, _Digits);
+
+   // FIX: Invalid stops
+   if(buy)
+   {
+      if ((SymbolInfoDouble(_Symbol, SYMBOL_BID) - sl) < minDist)
+         sl = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - minDist, _Digits);
+      if ((tp - SymbolInfoDouble(_Symbol, SYMBOL_BID)) < minDist)
+         tp = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) + minDist, _Digits);
+   }
+   else
+   {
+      if ((sl - SymbolInfoDouble(_Symbol, SYMBOL_ASK)) < minDist)
+         sl = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) + minDist, _Digits);
+      if ((SymbolInfoDouble(_Symbol, SYMBOL_ASK) - tp) < minDist)
+         tp = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) - minDist, _Digits);
+   }
 
    double lot = CalculateLot();
    g_trade.SetExpertMagicNumber(g_magic);
@@ -323,9 +342,11 @@ void ManagePositions()
          {
             if(InpEnableTrailingStop)
             {
-               int stopsPts  = (int)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL);
-               int freezePts = (int)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_FREEZE_LEVEL);
-               double minDist = MathMax(stopsPts,freezePts)*_Point;
+               double stopLevelPts = 0.0;
+               SymbolInfoDouble(_Symbol, SYMBOL_TRADE_STOPS_LEVEL, stopLevelPts);
+               int    freezePts = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+               double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+               double minDist = MathMax(stopLevelPts * point, freezePts * point);
 
                double price = g_position.PositionType()==POSITION_TYPE_BUY ? SymbolInfoDouble(_Symbol,SYMBOL_BID) : SymbolInfoDouble(_Symbol,SYMBOL_ASK);
                double sl = g_position.StopLoss();
