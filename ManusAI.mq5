@@ -287,11 +287,21 @@ double CalculateLot()
 bool OpenPosition(bool buy)
 {
    double price = buy ? SymbolInfoDouble(_Symbol,SYMBOL_ASK) : SymbolInfoDouble(_Symbol,SYMBOL_BID);
-   double sl = buy ? price - InpStopLossPips*_Point : price + InpStopLossPips*_Point;
-   double tp = buy ? price + InpTakeProfitPips*_Point : price - InpTakeProfitPips*_Point;
+
+   int    stopsPts  = (int)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL);
+   int    freezePts = (int)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_FREEZE_LEVEL);
+   double minDist   = MathMax(stopsPts,freezePts)*_Point;
+
+   double sl_dist = MathMax(InpStopLossPips*_Point,minDist);
+   double tp_dist = MathMax(InpTakeProfitPips*_Point,minDist);
+
+   double sl = buy ? price - sl_dist : price + sl_dist;
+   double tp = buy ? price + tp_dist : price - tp_dist;
+
    double lot = CalculateLot();
    g_trade.SetExpertMagicNumber(g_magic);
    g_trade.SetDeviationInPoints(InpSlippage);
+
    bool res = buy ? g_trade.Buy(lot,_Symbol,price,sl,tp,"ManusAI") :
                     g_trade.Sell(lot,_Symbol,price,sl,tp,"ManusAI");
    if(res)
@@ -313,20 +323,24 @@ void ManagePositions()
          {
             if(InpEnableTrailingStop)
             {
+               int stopsPts  = (int)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL);
+               int freezePts = (int)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_FREEZE_LEVEL);
+               double minDist = MathMax(stopsPts,freezePts)*_Point;
+
                double price = g_position.PositionType()==POSITION_TYPE_BUY ? SymbolInfoDouble(_Symbol,SYMBOL_BID) : SymbolInfoDouble(_Symbol,SYMBOL_ASK);
                double sl = g_position.StopLoss();
                double new_sl = sl;
                if(g_position.PositionType()==POSITION_TYPE_BUY)
                {
-                  double level = price - InpTrailingStopPips*_Point;
+                  double level = price - MathMax(InpTrailingStopPips*_Point,minDist);
                   if(level>sl+InpTrailingStepPips*_Point) new_sl=level;
                }
                else
                {
-                  double level = price + InpTrailingStopPips*_Point;
+                  double level = price + MathMax(InpTrailingStopPips*_Point,minDist);
                   if(level<sl-InpTrailingStepPips*_Point) new_sl=level;
                }
-               if(new_sl!=sl)
+               if(new_sl!=sl && MathAbs(price-new_sl)>=minDist)
                   g_trade.PositionModify(g_position.Ticket(),new_sl,g_position.TakeProfit());
             }
          }
