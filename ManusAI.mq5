@@ -289,32 +289,30 @@ bool OpenPosition(bool buy)
    // INVERTED ENTRY LOGIC
    bool orderBuy = !buy;
 
-   int    stopLevelPoints = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
-   int    freezePts       = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
-   double point           = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-
-   double stopLevel = stopLevelPoints * point;
-   double minDist   = MathMax(stopLevel, freezePts * point);
+   double stopPts   = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
+   double freezePts = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+   double minDist   = MathMax(stopPts, freezePts) * _Point;
+   double point     = _Point;
 
    double sl = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - InpStopLossPips * point, _Digits)
                    : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) + InpStopLossPips * point, _Digits);
    double tp = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) + InpTakeProfitPips * point, _Digits)
                    : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) - InpTakeProfitPips * point, _Digits);
 
-   // FIX: Invalid stops
+   // STOP-LEVEL ADJUST: deslocado +minDist para evitar Invalid stops
    if(buy)
    {
       if ((SymbolInfoDouble(_Symbol, SYMBOL_BID) - sl) < minDist)
-         sl = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - minDist, _Digits);
+         sl = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - minDist, _Digits); // STOP-LEVEL ADJUST
       if ((tp - SymbolInfoDouble(_Symbol, SYMBOL_BID)) < minDist)
-         tp = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) + minDist, _Digits);
+         tp = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) + minDist, _Digits); // STOP-LEVEL ADJUST
    }
    else
    {
       if ((sl - SymbolInfoDouble(_Symbol, SYMBOL_ASK)) < minDist)
-         sl = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) + minDist, _Digits);
+         sl = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) + minDist, _Digits); // STOP-LEVEL ADJUST
       if ((SymbolInfoDouble(_Symbol, SYMBOL_ASK) - tp) < minDist)
-         tp = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) - minDist, _Digits);
+         tp = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) - minDist, _Digits); // STOP-LEVEL ADJUST
    }
 
    double lot = CalculateLot();
