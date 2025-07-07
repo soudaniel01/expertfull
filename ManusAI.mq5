@@ -286,7 +286,7 @@ double CalculateLot()
 //--- abre posicao
 bool OpenPosition(bool buy)
 {
-   // INVERT-SIGNAL: troca Buy↔Sell e SL↔TP
+   // INVERTED ENTRY LOGIC
    bool orderBuy = !buy;
 
    int    stopLevelPoints = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
@@ -296,16 +296,13 @@ bool OpenPosition(bool buy)
    double stopLevel = stopLevelPoints * point;
    double minDist   = MathMax(stopLevel, freezePts * point);
 
-   double sl_orig = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - InpStopLossPips * point, _Digits)
-                        : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) + InpStopLossPips * point, _Digits);
-   double tp_orig = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) + InpTakeProfitPips * point, _Digits)
-                        : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) - InpTakeProfitPips * point, _Digits);
-
-   double sl = tp_orig;
-   double tp = sl_orig;
+   double sl = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - InpStopLossPips * point, _Digits)
+                   : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) + InpStopLossPips * point, _Digits);
+   double tp = buy ? NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) + InpTakeProfitPips * point, _Digits)
+                   : NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_ASK) - InpTakeProfitPips * point, _Digits);
 
    // FIX: Invalid stops
-   if(orderBuy)
+   if(buy)
    {
       if ((SymbolInfoDouble(_Symbol, SYMBOL_BID) - sl) < minDist)
          sl = NormalizeDouble(SymbolInfoDouble(_Symbol, SYMBOL_BID) - minDist, _Digits);
