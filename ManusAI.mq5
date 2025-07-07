@@ -159,10 +159,18 @@ bool BearIndicators()
    return (fast<slow && rsi<50);
 }
 
+//-- retorna a hora de um valor datetime (substitui TimeHour)
+int GetHour(datetime t)
+{
+   MqlDateTime tm;
+   TimeToStruct(t,tm);
+   return tm.hour;
+}
+
 bool CheckTradingSession()
 {
    datetime gmt = TimeCurrent() + InpUTCOffset*3600;
-   int hour = TimeHour(gmt);
+   int hour = GetHour(gmt);
    if(hour >= InpTradingStartHour && hour <= InpTradingEndHour)
       return true;
    return false;
@@ -236,8 +244,10 @@ double CalculateLot()
    double sl_value = InpStopLossPips*_Point / SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE) * tick_val;
    double volume = risk/sl_value;
    volume = MathFloor(volume/lot_step)*lot_step;
-   if(volume<g_symbol.VolumeMin()) volume=g_symbol.VolumeMin();
-   if(volume>g_symbol.VolumeMax()) volume=g_symbol.VolumeMax();
+   double vol_min = SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+   double vol_max = SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
+   if(volume<vol_min) volume=vol_min;
+   if(volume>vol_max) volume=vol_max;
    if(volume<=0) volume=InpLots;
    return volume;
 }
@@ -250,7 +260,7 @@ bool OpenPosition(bool buy)
    double tp = buy ? price + InpTakeProfitPips*_Point : price - InpTakeProfitPips*_Point;
    double lot = CalculateLot();
    g_trade.SetExpertMagicNumber(g_magic);
-   g_trade.SetSlippage(InpSlippage);
+   g_trade.SetDeviationInPoints(InpSlippage);
    bool res = buy ? g_trade.Buy(lot,_Symbol,price,sl,tp,"ManusAI") :
                     g_trade.Sell(lot,_Symbol,price,sl,tp,"ManusAI");
    if(res)
