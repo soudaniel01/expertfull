@@ -145,17 +145,17 @@ bool CheckEveningStar(int shift)
 //--- indicadores simples
 bool BullIndicators()
 {
-   double fast = iMA(_Symbol,_Period,InpFastEMAPeriod,0,MODE_EMA,PRICE_CLOSE);
-   double slow = iMA(_Symbol,_Period,InpSlowEMAPeriod,0,MODE_EMA,PRICE_CLOSE);
-   double rsi = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE);
+   double fast = iMA(_Symbol,_Period,InpFastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
+   double slow = iMA(_Symbol,_Period,InpSlowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
+   double rsi = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
    return (fast>slow && rsi>50);
 }
 
 bool BearIndicators()
 {
-   double fast = iMA(_Symbol,_Period,InpFastEMAPeriod,0,MODE_EMA,PRICE_CLOSE);
-   double slow = iMA(_Symbol,_Period,InpSlowEMAPeriod,0,MODE_EMA,PRICE_CLOSE);
-   double rsi = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE);
+   double fast = iMA(_Symbol,_Period,InpFastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
+   double slow = iMA(_Symbol,_Period,InpSlowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
+   double rsi = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
    return (fast<slow && rsi<50);
 }
 
@@ -219,7 +219,7 @@ bool MarketRegimeOK()
    if(handle!=INVALID_HANDLE)
    {
       double buf[];
-      if(CopyBuffer(handle,0,0,1,buf)>0)
+      if(CopyBuffer(handle,0,1,1,buf)>0) // NON-REPAINT FIX: use closed candle
          adx=buf[0];
       IndicatorRelease(handle);
    }
@@ -332,6 +332,12 @@ int OnInit()
 
 void OnTick()
 {
+   static datetime lastBarTime=0; // NON-REPAINT FIX: process once per candle
+   datetime currentBar=iTime(_Symbol,_Period,0);
+   if(currentBar==lastBarTime)
+      return;
+   lastBarTime=currentBar;
+
    if(!CheckTradingSession()) return;
    if(g_symbol.Spread() > InpMaxSpread) return;
    if(!MarketRegimeOK()) return;
