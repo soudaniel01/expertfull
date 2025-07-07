@@ -142,21 +142,52 @@ bool CheckEveningStar(int shift)
    return false;
 }
 
+//--- helper functions to get indicator values for closed candles
+double GetMA(int period,ENUM_MA_METHOD method,int shift)
+{
+   double buf[];
+   int handle=iMA(_Symbol,_Period,period,0,method,PRICE_CLOSE);
+   if(handle==INVALID_HANDLE)
+      return(0.0);
+   if(CopyBuffer(handle,0,shift,1,buf)<=0)
+   {
+      IndicatorRelease(handle);
+      return(0.0);
+   }
+   IndicatorRelease(handle);
+   return(buf[0]);
+}
+
+double GetRSI(int period,int shift)
+{
+   double buf[];
+   int handle=iRSI(_Symbol,_Period,period,PRICE_CLOSE);
+   if(handle==INVALID_HANDLE)
+      return(0.0);
+   if(CopyBuffer(handle,0,shift,1,buf)<=0)
+   {
+      IndicatorRelease(handle);
+      return(0.0);
+   }
+   IndicatorRelease(handle);
+   return(buf[0]);
+}
+
 //--- indicadores simples
 bool BullIndicators()
 {
-   double fast = iMA(_Symbol,_Period,InpFastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
-   double slow = iMA(_Symbol,_Period,InpSlowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
-   double rsi = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
-   return (fast>slow && rsi>50);
+   double fast = GetMA(InpFastEMAPeriod,MODE_EMA,1);   // NON-REPAINT: closed candle
+   double slow = GetMA(InpSlowEMAPeriod,MODE_EMA,1);   // NON-REPAINT: closed candle
+   double rsi  = GetRSI(InpRSIPeriod,1);               // NON-REPAINT: closed candle
+   return(fast>slow && rsi>50);
 }
 
 bool BearIndicators()
 {
-   double fast = iMA(_Symbol,_Period,InpFastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
-   double slow = iMA(_Symbol,_Period,InpSlowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
-   double rsi = iRSI(_Symbol,_Period,InpRSIPeriod,PRICE_CLOSE,1); // NON-REPAINT FIX: use closed candle
-   return (fast<slow && rsi<50);
+   double fast = GetMA(InpFastEMAPeriod,MODE_EMA,1);   // NON-REPAINT: closed candle
+   double slow = GetMA(InpSlowEMAPeriod,MODE_EMA,1);   // NON-REPAINT: closed candle
+   double rsi  = GetRSI(InpRSIPeriod,1);               // NON-REPAINT: closed candle
+   return(fast<slow && rsi<50);
 }
 
 //-- retorna a hora de um valor datetime (substitui TimeHour)
