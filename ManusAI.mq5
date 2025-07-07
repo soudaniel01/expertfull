@@ -2,9 +2,9 @@
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\PositionInfo.mqh>
 
-CTrade trade;
-CSymbolInfo symbol;
-CPositionInfo position;
+CTrade g_trade;
+CSymbolInfo g_symbol;
+CPositionInfo g_position;
 
 input double InpLots = 0.1;                   // Lote inicial
 input int    InpMagicNumberBase = 12345;      // Numero magico base
@@ -62,23 +62,23 @@ datetime today_start = 0;
 int g_magic = 0;                        // magic number por simbolo/timeframe
 
 //--- Funcao auxiliar para saber se candle e bullish/bearish
-bool Bullish(int shift){ return Close[shift] > Open[shift]; }
-bool Bearish(int shift){ return Close[shift] < Open[shift]; }
+bool Bullish(int shift){ return iClose(_Symbol,_Period,shift) > iOpen(_Symbol,_Period,shift); }
+bool Bearish(int shift){ return iClose(_Symbol,_Period,shift) < iOpen(_Symbol,_Period,shift); }
 
 //--- calcula magic number unico por simbolo e timeframe
 int GetMagicNumber()
 {
    uint hash=0;
    for(int i=0;i<StringLen(_Symbol);i++)
-      hash = hash*33 + StringGetChar(_Symbol,i);
+      hash = hash*33 + StringGetCharacter(_Symbol,i);
    return InpMagicNumberBase + (int)_Period*100 + (int)(hash%100);
 }
 
 bool CheckHammer(int shift)
 {
-   double body = MathAbs(Close[shift]-Open[shift]);
-   double lower = MathMin(Open[shift],Close[shift]) - Low[shift];
-   double upper = High[shift] - MathMax(Open[shift],Close[shift]);
+   double body = MathAbs(iClose(_Symbol,_Period,shift)-iOpen(_Symbol,_Period,shift));
+   double lower = MathMin(iOpen(_Symbol,_Period,shift),iClose(_Symbol,_Period,shift)) - iLow(_Symbol,_Period,shift);
+   double upper = iHigh(_Symbol,_Period,shift) - MathMax(iOpen(_Symbol,_Period,shift),iClose(_Symbol,_Period,shift));
    if(lower >= 2*body && upper <= body*0.5)
       return true;
    return false;
@@ -86,9 +86,9 @@ bool CheckHammer(int shift)
 
 bool CheckInvertedHammer(int shift)
 {
-   double body = MathAbs(Close[shift]-Open[shift]);
-   double upper = High[shift] - MathMax(Open[shift],Close[shift]);
-   double lower = MathMin(Open[shift],Close[shift]) - Low[shift];
+   double body = MathAbs(iClose(_Symbol,_Period,shift)-iOpen(_Symbol,_Period,shift));
+   double upper = iHigh(_Symbol,_Period,shift) - MathMax(iOpen(_Symbol,_Period,shift),iClose(_Symbol,_Period,shift));
+   double lower = MathMin(iOpen(_Symbol,_Period,shift),iClose(_Symbol,_Period,shift)) - iLow(_Symbol,_Period,shift);
    if(upper >= 2*body && lower <= body*0.5)
       return true;
    return false;
@@ -97,7 +97,7 @@ bool CheckInvertedHammer(int shift)
 bool CheckBullishEngulfing(int shift)
 {
    if(Bearish(shift+1) && Bullish(shift) &&
-      Open[shift] < Close[shift+1] && Close[shift] > Open[shift+1])
+      iOpen(_Symbol,_Period,shift) < iClose(_Symbol,_Period,shift+1) && iClose(_Symbol,_Period,shift) > iOpen(_Symbol,_Period,shift+1))
       return true;
    return false;
 }
@@ -105,7 +105,7 @@ bool CheckBullishEngulfing(int shift)
 bool CheckBearishEngulfing(int shift)
 {
    if(Bullish(shift+1) && Bearish(shift) &&
-      Open[shift] > Close[shift+1] && Close[shift] < Open[shift+1])
+      iOpen(_Symbol,_Period,shift) > iClose(_Symbol,_Period,shift+1) && iClose(_Symbol,_Period,shift) < iOpen(_Symbol,_Period,shift+1))
       return true;
    return false;
 }
@@ -113,7 +113,7 @@ bool CheckBearishEngulfing(int shift)
 bool CheckPiercingLine(int shift)
 {
    if(Bearish(shift+1) && Bullish(shift) &&
-      Open[shift] < Low[shift+1] && Close[shift] > (Open[shift+1]+Close[shift+1])/2)
+      iOpen(_Symbol,_Period,shift) < iLow(_Symbol,_Period,shift+1) && iClose(_Symbol,_Period,shift) > (iOpen(_Symbol,_Period,shift+1)+iClose(_Symbol,_Period,shift+1))/2)
       return true;
    return false;
 }
@@ -121,23 +121,23 @@ bool CheckPiercingLine(int shift)
 bool CheckDarkCloudCover(int shift)
 {
    if(Bullish(shift+1) && Bearish(shift) &&
-      Open[shift] > High[shift+1] && Close[shift] < (Open[shift+1]+Close[shift+1])/2)
+      iOpen(_Symbol,_Period,shift) > iHigh(_Symbol,_Period,shift+1) && iClose(_Symbol,_Period,shift) < (iOpen(_Symbol,_Period,shift+1)+iClose(_Symbol,_Period,shift+1))/2)
       return true;
    return false;
 }
 
 bool CheckMorningStar(int shift)
 {
-   if(Bearish(shift+2) && MathAbs(Open[shift+1]-Close[shift+1]) <= (High[shift+1]-Low[shift+1])*0.5 &&
-      Bullish(shift) && Close[shift] > (Open[shift+2]+Close[shift+2])/2)
+   if(Bearish(shift+2) && MathAbs(iOpen(_Symbol,_Period,shift+1)-iClose(_Symbol,_Period,shift+1)) <= (iHigh(_Symbol,_Period,shift+1)-iLow(_Symbol,_Period,shift+1))*0.5 &&
+      Bullish(shift) && iClose(_Symbol,_Period,shift) > (iOpen(_Symbol,_Period,shift+2)+iClose(_Symbol,_Period,shift+2))/2)
       return true;
    return false;
 }
 
 bool CheckEveningStar(int shift)
 {
-   if(Bullish(shift+2) && MathAbs(Open[shift+1]-Close[shift+1]) <= (High[shift+1]-Low[shift+1])*0.5 &&
-      Bearish(shift) && Close[shift] < (Open[shift+2]+Close[shift+2])/2)
+   if(Bullish(shift+2) && MathAbs(iOpen(_Symbol,_Period,shift+1)-iClose(_Symbol,_Period,shift+1)) <= (iHigh(_Symbol,_Period,shift+1)-iLow(_Symbol,_Period,shift+1))*0.5 &&
+      Bearish(shift) && iClose(_Symbol,_Period,shift) < (iOpen(_Symbol,_Period,shift+2)+iClose(_Symbol,_Period,shift+2))/2)
       return true;
    return false;
 }
@@ -176,7 +176,7 @@ double GetTodayLoss()
    if(TimeCurrent() - today_start >= 86400)
    {
       today_start = StringToTime(TimeToString(TimeCurrent(),TIME_DATE));
-      max_equity = AccountEquity();
+      max_equity = AccountInfoDouble(ACCOUNT_EQUITY);
    }
    double loss = 0.0;
    for(int i=HistoryDealsTotal()-1;i>=0;i--)
@@ -192,9 +192,9 @@ double GetTodayLoss()
 
 bool RiskLimitsOK()
 {
-   if(max_equity==0) max_equity = AccountEquity();
-   if(AccountEquity()>max_equity) max_equity = AccountEquity();
-   double drawdown = (max_equity-AccountEquity())/max_equity*100.0;
+   if(max_equity==0) max_equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   if(AccountInfoDouble(ACCOUNT_EQUITY)>max_equity) max_equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   double drawdown = (max_equity-AccountInfoDouble(ACCOUNT_EQUITY))/max_equity*100.0;
    double today_loss = GetTodayLoss()/AccountBalance()*100.0;
    if(drawdown>InpMaxDrawdown || today_loss>InpMaxDailyLoss)
       return false;
@@ -228,8 +228,8 @@ double CalculateLot()
    double sl_value = InpStopLossPips*_Point / SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE) * tick_val;
    double volume = risk/sl_value;
    volume = MathFloor(volume/lot_step)*lot_step;
-   if(volume<symbol.VolumeMin()) volume=symbol.VolumeMin();
-   if(volume>symbol.VolumeMax()) volume=symbol.VolumeMax();
+   if(volume<g_symbol.VolumeMin()) volume=g_symbol.VolumeMin();
+   if(volume>g_symbol.VolumeMax()) volume=g_symbol.VolumeMax();
    if(volume<=0) volume=InpLots;
    return volume;
 }
@@ -241,10 +241,10 @@ bool OpenPosition(bool buy)
    double sl = buy ? price - InpStopLossPips*_Point : price + InpStopLossPips*_Point;
    double tp = buy ? price + InpTakeProfitPips*_Point : price - InpTakeProfitPips*_Point;
    double lot = CalculateLot();
-   trade.SetExpertMagicNumber(g_magic);
-   trade.SetSlippage(InpSlippage);
-   bool res = buy ? trade.Buy(lot,_Symbol,price,sl,tp,"ManusAI") :
-                    trade.Sell(lot,_Symbol,price,sl,tp,"ManusAI");
+   g_trade.SetExpertMagicNumber(g_magic);
+   g_trade.SetSlippage(InpSlippage);
+   bool res = buy ? g_trade.Buy(lot,_Symbol,price,sl,tp,"ManusAI") :
+                    g_trade.Sell(lot,_Symbol,price,sl,tp,"ManusAI");
    if(res)
    {
       if(InpEnableAlerts) Alert("ManusAI ordem aberta: ", buy?"BUY":"SELL");
@@ -258,16 +258,16 @@ void ManagePositions()
 {
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
-      if(position.SelectByIndex(i))
+      if(g_position.SelectByIndex(i))
       {
-         if(position.Magic()==g_magic && position.Symbol()==_Symbol)
+         if(g_position.Magic()==g_magic && g_position.Symbol()==_Symbol)
          {
             if(InpEnableTrailingStop)
             {
-               double price = position.PositionType()==POSITION_TYPE_BUY ? SymbolInfoDouble(_Symbol,SYMBOL_BID) : SymbolInfoDouble(_Symbol,SYMBOL_ASK);
-               double sl = position.StopLoss();
+               double price = g_position.PositionType()==POSITION_TYPE_BUY ? SymbolInfoDouble(_Symbol,SYMBOL_BID) : SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+               double sl = g_position.StopLoss();
                double new_sl = sl;
-               if(position.PositionType()==POSITION_TYPE_BUY)
+               if(g_position.PositionType()==POSITION_TYPE_BUY)
                {
                   double level = price - InpTrailingStopPips*_Point;
                   if(level>sl+InpTrailingStepPips*_Point) new_sl=level;
@@ -278,7 +278,7 @@ void ManagePositions()
                   if(level<sl-InpTrailingStepPips*_Point) new_sl=level;
                }
                if(new_sl!=sl)
-                  trade.PositionModify(position.Ticket(),new_sl,position.TakeProfit());
+                  g_trade.PositionModify(g_position.Ticket(),new_sl,g_position.TakeProfit());
             }
          }
       }
@@ -305,9 +305,9 @@ bool EntrySell()
 
 int OnInit()
 {
-   symbol.Name(_Symbol);
+   g_symbol.Name(_Symbol);
    today_start = StringToTime(TimeToString(TimeCurrent(),TIME_DATE));
-   max_equity = AccountEquity();
+   max_equity = AccountInfoDouble(ACCOUNT_EQUITY);
    g_magic = GetMagicNumber();
    return(INIT_SUCCEEDED);
 }
@@ -315,7 +315,7 @@ int OnInit()
 void OnTick()
 {
    if(!CheckTradingSession()) return;
-   if(symbol.Spread() > InpMaxSpread) return;
+   if(g_symbol.Spread() > InpMaxSpread) return;
    if(!MarketRegimeOK()) return;
    if(!CheckNewsFilter()) return;
    if(!RiskLimitsOK()) return;
